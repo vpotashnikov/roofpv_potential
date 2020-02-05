@@ -62,14 +62,14 @@ void get_node_coord(const char* src_file, map<long, double>& vec_lat, map<long, 
 
 double square(double* crd_lat, double* crd_lon, int n) {
     int i;
-    double tmp;
+    double tmp, tmp2 = crd_lat[0];
     for (i = 0; i != n; i++) 
         tmp += crd_lon[i];
     tmp = tmp / n;
     // From gradus to km
     for (i = 0; i != n; i++) {
         crd_lon[i] = 2 * 3.141593 * 6378.1 * cos(crd_lat[i] / 180 * 3.141593) * (crd_lon[i] - tmp) / 360;
-        crd_lat[i] = 2 * 3.141593 * 6378.1 * crd_lat[i] / 360;
+        crd_lat[i] = 2 * 3.141593 * 6378.1 * (crd_lat[i] - tmp2) / 360;
     }
     double sq = 0;
     for (i = 1; i != n; i++) {
@@ -145,21 +145,19 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
                             if (st[0] == 'v' && st[1] == '=' && st[2] == '"') {
                                 tag_tmp = 3;
                                 while (st[tag_tmp] != '"') tag_tmp++;
-                                st[tag_tmp] = 0;
                                 tag_nm.assign(st + 3, tag_tmp - 3);
                                 if (tag.count(tag_nm) == 0) {
                                     printf("add tag \"%s\"\n",tag_nm.data());
                                     tag.insert(tag_nm);
                                 }
                             }
-                        }
-                        if (strcmp("k=\"building:levels\"", st) == 0) {
+                        } else if (strcmp("k=\"building:levels\"", st) == 0) {
                             fscanf(f, "%s", st); 
                             sscanf(st + 3, "%f", &build_levels);  
                             build = true;
                         }
                         j = strlen(st);
-                        tag_fl = j >= 2 && (st[j - 1] != '>' || st[j - 2] != '/');
+                        tag_fl = !(j >= 2 && st[j - 1] == '>' && st[j - 2] == '/');
                     }
                 } 
                 fscanf(f, "%s", st); 
@@ -187,9 +185,10 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
                // lon = (lon + crd_lon[0]) / (node_cnt + 1);
                lat = crd_lat[0];
                lon = crd_lon[0];
+                             
                sq = square(crd_lat, crd_lon, node_cnt + 1);
-               fprintf(fout_lev, "%ld,%lf,%lf,%.1f,\"%s\",%lf\n", id, lat, lon, build_levels, tag_nm.data(), sq);
-               
+               fprintf(fout_lev, "%ld,%lf,%lf,%.1f,\"%s\",%lf,%d\n", id, lat, lon, build_levels, tag_nm.data(), sq, node_cnt);
+
                lat = round(lat * 10) / 10;
                lon = round(lon * 10) / 10;
 
