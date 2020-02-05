@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <map>
+#include <set>
 #include <time.h> 
 #include <math.h> 
 #include <regex>
@@ -103,10 +104,14 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
     string by_builing_name(src_file);
     by_builing_name.append(".by_bulding.csv");
     FILE* fout_lev = fopen(by_builing_name.data(), "w");
-    fprintf(fout_lev, "id,lat,lon,levels,square\n");
+    fprintf(fout_lev, "id,lat,lon,levels,tag,square\n");
 
     fpos_t pos;
     long it = 0;
+    
+    int tag_tmp;
+    set<string> tag;
+    string tag_nm;
 
     // Read file for understand way/nodes
     FILE* f = fopen(src_file, "r");
@@ -120,6 +125,7 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
             node_cnt = 0;
             build = false;
             build_levels = -1;
+            tag_nm.clear();
             while (fl_way && strcmp("</way>", st) != 0) {
                 // read node
                 if (strcmp("<nd", st) == 0) {
@@ -133,8 +139,20 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
                     tag_fl = true;
                     while (tag_fl) {
                         fscanf(f, "%s", st); 
-                        if (strcmp("k=\"building\"", st) == 0)
+                        if (strcmp("k=\"building\"", st) == 0) {
                             build = true;
+                            fscanf(f, "%s", st); 
+                            if (st[0] == 'v' && st[1] == '=' && st[2] == '"') {
+                                tag_tmp = 3;
+                                while (st[tag_tmp] != '"') tag_tmp++;
+                                st[tag_tmp] = 0;
+                                tag_nm.assign(st + 3, tag_tmp - 3);
+                                if (tag.count(tag_nm) == 0) {
+                                    printf("add tag \"%s\"\n",tag_nm.data());
+                                    tag.insert(tag_nm);
+                                }
+                            }
+                        }
                         if (strcmp("k=\"building:levels\"", st) == 0) {
                             fscanf(f, "%s", st); 
                             sscanf(st + 3, "%f", &build_levels);  
@@ -170,13 +188,13 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
                lat = crd_lat[0];
                lon = crd_lon[0];
                sq = square(crd_lat, crd_lon, node_cnt + 1);
-               fprintf(fout_lev, "%ld,%lf,%lf,%.1f,%lf\n", id, lat, lon, build_levels, sq);
+               fprintf(fout_lev, "%ld,%lf,%lf,%.1f,\"%s\",%lf\n", id, lat, lon, build_levels, tag_nm.data(), sq);
                
                lat = round(lat * 10) / 10;
                lon = round(lon * 10) / 10;
 
                // Build stat
-               sprintf(buf, "%3.1lf,%3.1lf,%.1f", lat, lon, build_levels);
+               sprintf(buf, "%3.1lf,%3.1lf,%.1f,\"%s\"", lat, lon, build_levels, tag_nm.data());
                if (build_stat.count(buf) == 0) {
                    build_stat.insert(pair<string, double> (buf, 0));
                }
@@ -197,7 +215,7 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
     string agg_stat_name(src_file);
     agg_stat_name.append(".agg_stat.csv");
     FILE* fout_stat = fopen(agg_stat_name.data(), "w");
-    fprintf(fout_stat, "lat,lon,levels,square\n");    
+    fprintf(fout_stat, "lat,lon,levels,tag,square\n");    
     map<string, double>::iterator itr;
     for (itr = build_stat.begin(); itr != build_stat.end(); ++itr) { 
         fprintf(fout_stat, "%s,%lf\n", itr->first.data(), itr->second);
@@ -216,7 +234,7 @@ void read_town(const char* src_file) {
     get_way(src_file, vec_lat, vec_lon);
 }
 int main(int arc, char** argv) {
-    if (arc != 2) {
+    if (arc < 2) {
         printf("You have define source file\n");
         return 1;
     }
