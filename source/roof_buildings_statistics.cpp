@@ -170,7 +170,7 @@ void get_way(const char* src_file, map<long, double> vec_lat, map<long, double> 
                lat = crd_lat[0];
                lon = crd_lon[0];
                sq = square(crd_lat, crd_lon, node_cnt + 1);
-               fprintf(fout_lev, "%d,%lf,%lf,%.1f,%lf\n", nbuild, lat, lon, build_levels, sq);
+               fprintf(fout_lev, "%ld,%lf,%lf,%.1f,%lf\n", id, lat, lon, build_levels, sq);
                
                lat = round(lat * 10) / 10;
                lon = round(lon * 10) / 10;
